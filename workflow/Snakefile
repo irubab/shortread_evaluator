@@ -1,0 +1,81 @@
+samples = ['m54238_180901_011437.Q20']
+
+rule all:
+  input:
+    ['results/{sample}_plots.pdf'.format(sample=sample) for sample in samples]
+
+rule short_reads:
+  input:
+    'resources/data/{sample}.fastq'
+  output:
+    'resources/samples/{sample}_shortreads_1.fastq',
+    'resources/samples/{sample}_shortreads_2.fastq'
+  conda:
+    'envs/shortreads.yaml'
+  script:
+    'scripts/normally_distributed_short_reads.py'
+
+rule bwa_index:
+  input:
+    'resources/reference.fa',
+  conda:
+    'envs/bwa_mapping.yaml'
+  shell:
+    'bwa index -p {input} -a bwtsw {input}'
+
+rule bwa_align:
+  input:
+    'resources/reference.fa',
+    'resources/samples/{sample}_shortreads_1.fastq',
+    'resources/samples/{sample}_shortreads_2.fastq'
+  output:
+    'resources/mapped/{sample}_shortreads.sam'
+  conda:
+    'envs/bwa_mapping.yaml'
+  shell:
+    'bwa mem -p {input} > {output}'
+
+rule minimap_index:
+  input:
+    'resources/reference.fa'
+  output:
+    'resources/mapped/reference.mmi'
+  conda:
+    'envs/minimap_mapping.yaml'
+  shell:
+    'minimap2 {output} {input}'
+
+rule minimap_align:
+  input:
+    'resources/reference.fa',
+    'resources/data/{sample}.fastq'
+  output:
+    'resources/mapped/{sample}.sam'
+  conda:
+    'envs/minimap_mapping.yaml'
+  shell:
+    'minimap2 -a {input} > {output}'
+
+rule to_csv:
+  input:
+    'resources/mapped/{sample}.sam',
+    'resources/mapped/{sample}_shortreads.sam'
+  output:
+    temp('resources/mapped/{sample}_aligned.csv'),
+    temp('resources/mapped/{sample}_shortreads_aligned.csv')
+  conda:
+    'envs/to_csv.yaml'
+  script:
+    'scripts/extract_alignment_information.py'
+
+rule evaluate:
+  input:
+    'resources/mapped/{sample}_aligned.csv',
+    'resources/mapped/{sample}_shortreads_aligned.csv'
+  output:
+    report('results/{sample}_plots.pdf', caption='report/xyz.rst')
+  conda:
+    'envs/evaluate.yaml'
+  script:
+    'scripts/evaluate_alignments_with_cigar.py'
+

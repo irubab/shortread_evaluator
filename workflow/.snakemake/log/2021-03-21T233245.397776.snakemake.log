@@ -1,0 +1,5 @@
+Building DAG of jobs...
+MissingInputException in line 47 of /MMCI/TM/nanopore/work/itrat/pipeline/workflow/Snakefile:
+Missing input files for rule minimap_align:
+resources/reference.fa
+resources/data/m54238_180901_011437.Q20.fastq
